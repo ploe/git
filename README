@@ -4,7 +4,9 @@ A wrapper around git on the command line, written in Go.
 
 Thought it might be useful to me in the future so sticking it up here.
 
-Copyright (c) 2013 Myke Atkinson
+Code is commented so that godoc can read it.
+
+Copyright (c) 2014 Myke Atkinson
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
