@@ -8,13 +8,19 @@ import (
 	"os/exec"
 	"bytes"
 	"strings"
-//	"fmt"
+	//"fmt"
 )
 
 // Our type Repo is our interface to a git repository. The reason for this
 // being that way is so we don't have to remember our working directory if
 // for some mental reason we wind up working on many at once.
+//
+// The visible attributes Err and Output are the error and combined output
+// (stdout, stderr) of the last executed shell command.
 type Repo struct {
+	Err error
+	Output []byte
+
 	dir string
 	wd string
 }
@@ -24,54 +30,64 @@ func GetRepo(dir string) (* Repo) {
 	return &Repo{dir: dir}
 }
 
-// Repo method that clones the Repo to the specified dir. You only need to
-// specify where you want the Repo cloning to or other command line params
-func (r *Repo) Clone(arg ...string) ([]byte, error) {
+// Repo method that clones the Repo to the specified dir. Returns the 
+// cloned repo as a Repo.
+func (r *Repo) Clone(arg ...string) (* Repo) {
 	arg = prependArg(r.dir, arg)
-	return run("clone", arg...)
+	r.run("clone", arg...)
+
+	return GetRepo(arg[1])
 }
 
-// Repo method that adds listed files to staging
-func (r *Repo) Add(arg ...string) ([]byte, error) {
+// Repo method that adds listed files to staging. The args are variadic.
+func (r *Repo) Add(arg ...string) (error) {
 	return r.chdirRun("add", arg...)
 }
 
 // Repo method that commits. Only takes the commit message as an arg.
-func (r *Repo) Commit(arg string) ([]byte, error) {
+func (r *Repo) Commit(arg string) (error) {
 	return r.chdirRun("commit", "-m", arg)
 }
 
 // Repo method that adds all untracked files.
-func (r *Repo) AddUntracked() ([]byte, error) {
+func (r *Repo) AddUntracked() (error) {
 	return r.addStdout("ls-files", "--others", "--exclude-standard")
 }
 
 // Repo method that adds all modified files.
 // You're welcome...
-func (r *Repo) AddModified() ([]byte, error) {
+func (r *Repo) AddModified() (error) {
 	return r.addStdout("ls-files", "-m")
 }
 
-// Temporarily switches the working directory before we fire off git
-func (r *Repo) chdirRun(subcmd string, arg ...string) ([]byte, error) {
-	r.flameOn()
+// Wrapper around exec calls, builds up the command
+func (r* Repo) run(subcmd string, arg ...string) (error) {
 	arg = prependArg(subcmd, arg)
-	output, err := exec.Command("git", arg...).CombinedOutput()
+	cmd := exec.Command("git", arg...)
+	r.Output, r.Err = cmd.CombinedOutput()
+	return r.Err
+}
+
+// Temporarily switches the working directory before we fire off git
+func (r *Repo) chdirRun(subcmd string, arg ...string) (error) {
+	r.flameOn()
+	r.run(subcmd, arg...)
 	r.flameOff()
-	return output, err
+	return r.Err
 }
 
 // Generic function that adds a list of files to the repo
-func (r *Repo) addStdout(subcmd string, arg ...string) ([]byte, error) {
-	stdout, err := r.chdirRun(subcmd, arg...)
-	if (err != nil) {
-		return stdout, err
+func (r *Repo) addStdout(subcmd string, arg ...string) (error) {
+	r.chdirRun(subcmd, arg...)
+	if (r.Err != nil) {
+		return r.Err
 	}
+	// Previous output is dropped since the last command was successful
 
-	n := bytes.Index(stdout, nil)
-	files := strings.Split(string(stdout[:n]), "\n")
-	tmp, err := r.Add(files...)
-	return append(stdout, tmp...), err
+	n := bytes.Index(r.Output, nil)
+	files := strings.Split(string(r.Output[:n]), "\n")
+	r.Add(files...)
+	return r.Err
 }
 
 // Changes working directory to Repo's dir but caches the working
@@ -95,11 +111,4 @@ func prependArg(pre string, arg []string) ([]string) {
 	buffer := make([]string, 1)
 	buffer[0] = pre
 	return append(buffer, arg...)
-}
-
-// Wrapper around exec calls, builds up the command
-func run(subcmd string, arg ...string) ([]byte, error) {
-	arg = prependArg(subcmd, arg)
-	cmd := exec.Command("git", arg...)
-	return cmd.CombinedOutput()
 }
