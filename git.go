@@ -20,7 +20,7 @@ type Repo struct {
 }
 
 // Returns a Repo with its dir set. Does no error handling whatsoever.
-func GetRepo(dir string) (* Repo){
+func GetRepo(dir string) (* Repo) {
 	return &Repo{dir: dir}
 }
 
@@ -64,7 +64,7 @@ func (r *Repo) chdirRun(subcmd string, arg ...string) ([]byte, error) {
 // Generic function that adds a list of files to the repo
 func (r *Repo) addStdout(subcmd string, arg ...string) ([]byte, error) {
 	stdout, err := r.chdirRun(subcmd, arg...)
-	if(err != nil) {
+	if (err != nil) {
 		return stdout, err
 	}
 
@@ -80,7 +80,7 @@ func (r *Repo) flameOn() error {
 	wd, err := os.Getwd()
 	r.wd = wd
 	if (err == nil) {
-		err = os.Chdir(r.wd)
+		err = os.Chdir(r.dir)
 	}
 	return err
 }
@@ -98,14 +98,8 @@ func prependArg(pre string, arg []string) ([]string) {
 }
 
 // Wrapper around exec calls, builds up the command
-func run(subcmd string, arg ...string) ([]byte, error){
+func run(subcmd string, arg ...string) ([]byte, error) {
 	arg = prependArg(subcmd, arg)
 	cmd := exec.Command("git", arg...)
 	return cmd.CombinedOutput()
 }
-
-
-/*
-// Adds all modified files to 
-
-*/
